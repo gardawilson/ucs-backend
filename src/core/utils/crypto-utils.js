@@ -11,7 +11,7 @@ exports.hashPassword = (password) => {
 
     return encrypted;
   } catch (err) {
-    console.error('Error hashing password:', err);
+    console.error('Error hashing password:', err.message);
     return null;
   }
 };
