@@ -19,7 +19,7 @@ router.delete('/:noSO/full', verifyToken, stockOpnameController.deleteStockOpnam
 router.get('/:noSO/selections', verifyToken, stockOpnameController.getStockOpnameSelections);
 
 // GET hasil opname (QtyFisik, QtyUsage, Remark) by NoSO
-router.get('/:noSO/hasil', verifyToken, stockOpnameController.getStockOpnameHasil);
+router.get('/:noSO/result', verifyToken, stockOpnameController.getStockOpnameHasil);
 
 // GET families for specific Stock Opname (by NoSO)
 router.get('/:noSO/families', verifyToken, stockOpnameController.getStockOpnameFamilies);
