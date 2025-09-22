@@ -15,6 +15,12 @@ router.post('/:noSO/rebuild', verifyToken, stockOpnameController.rebuildStockOpn
 // DELETE full Stock Opname (header + dFamily + ascend + hasil)
 router.delete('/:noSO/full', verifyToken, stockOpnameController.deleteStockOpnameFull);
 
+// GET selections (CategoryID + FamilyIDs) by NoSO
+router.get('/:noSO/selections', verifyToken, stockOpnameController.getStockOpnameSelections);
+
+// GET hasil opname (QtyFisik, QtyUsage, Remark) by NoSO
+router.get('/:noSO/hasil', verifyToken, stockOpnameController.getStockOpnameHasil);
+
 // GET families for specific Stock Opname (by NoSO)
 router.get('/:noSO/families', verifyToken, stockOpnameController.getStockOpnameFamilies);
 
@@ -33,7 +39,6 @@ router.delete('/:noSO/items/:itemId', verifyToken, stockOpnameController.deleteS
 // SAVE/UPSERT hasil ascend
 // contoh: POST /api/stock-opname/Q.000003/items/save
 router.post('/:noSO/items/save', verifyToken, stockOpnameController.saveStockOpnameAscendHasil);
-
 
 
 

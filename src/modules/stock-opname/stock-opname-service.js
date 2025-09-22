@@ -379,6 +379,63 @@ exports.deleteStockOpnameFull = async (noSO) => {
 };
 
 
+exports.getStockOpnameSelections = async (noSO) => {
+  try {
+    await connectDb();
+
+    const result = await sql.query`
+      SELECT CategoryID, FamilyID
+      FROM dbo.StockOpnameAscend_dFamily
+      WHERE NoSO = ${noSO}
+      ORDER BY CategoryID, FamilyID
+    `;
+
+    // Grouping by CategoryID
+    const map = new Map();
+    for (const row of result.recordset) {
+      if (!map.has(row.CategoryID)) map.set(row.CategoryID, []);
+      map.get(row.CategoryID).push(row.FamilyID);
+    }
+
+    const selections = [...map.entries()].map(([categoryId, familyIds]) => ({
+      categoryId,
+      familyIds
+    }));
+
+    return { success: true, noSO, selections };
+  } catch (err) {
+    console.error('Error in getStockOpnameSelections:', err);
+    throw err;
+  }
+};
+
+
+exports.getStockOpnameHasil = async (noSO) => {
+  try {
+    await connectDb();
+
+    const result = await sql.query`
+      SELECT 
+        B.ItemName,
+        A.QtyFisik,
+        A.QtyUsage,
+        A.UsageRemark
+      FROM dbo.StockOpnameAscendHasil A
+      LEFT JOIN AS_UC_2017.dbo.IC_Items B ON B.ItemID = A.ItemID
+      WHERE A.NoSO = ${noSO}
+      ORDER BY B.ItemName
+    `;
+
+    return { success: true, noSO, data: result.recordset };
+  } catch (err) {
+    console.error('Error in getStockOpnameHasil:', err);
+    throw err;
+  }
+};
+
+
+
+
   exports.getStockOpnameFamilies = async (noSO) => {
     try {
       await connectDb();

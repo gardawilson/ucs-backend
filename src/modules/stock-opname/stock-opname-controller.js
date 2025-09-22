@@ -62,6 +62,52 @@ exports.rebuildStockOpnameAscend = async (req, res) => {
   }
 };
 
+
+exports.getStockOpnameSelections = async (req, res) => {
+  try {
+    const { noSO } = req.params;
+
+    if (!noSO) {
+      return res.status(400).json({
+        success: false,
+        message: 'Parameter noSO wajib diisi'
+      });
+    }
+
+    const result = await stockOpnameService.getStockOpnameSelections(noSO);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan di server',
+      detail: err.message
+    });
+  }
+};
+
+
+exports.getStockOpnameHasil = async (req, res) => {
+  try {
+    const { noSO } = req.params;
+
+    if (!noSO) {
+      return res.status(400).json({
+        success: false,
+        message: 'Parameter noSO wajib diisi'
+      });
+    }
+
+    const result = await stockOpnameService.getStockOpnameHasil(noSO);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan di server',
+      detail: err.message
+    });
+  }
+};
+
   
 
 exports.deleteStockOpnameFull = async (req, res) => {
@@ -81,6 +127,30 @@ exports.deleteStockOpnameFull = async (req, res) => {
     });
   }
 };
+
+
+exports.getStockOpnameHasil = async (req, res) => {
+  try {
+    const { noSO } = req.params;
+
+    if (!noSO) {
+      return res.status(400).json({
+        success: false,
+        message: 'Parameter noSO wajib diisi'
+      });
+    }
+
+    const result = await stockOpnameService.getStockOpnameHasil(noSO);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan di server',
+      detail: err.message
+    });
+  }
+};
+
 
   
 

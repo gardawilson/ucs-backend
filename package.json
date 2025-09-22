@@ -1,5 +1,5 @@
 {
-  "name": "wps_backend",
+  "name": "ucs_backend",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
