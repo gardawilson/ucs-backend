@@ -42,5 +42,4 @@ router.post('/:noSO/items/save', verifyToken, stockOpnameController.saveStockOpn
 
 
 
-
 module.exports = router;
