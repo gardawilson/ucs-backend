@@ -110,6 +110,7 @@ exports.saveStockOpnameAscend = async ({ tgl, isAscend, selections }) => {
             WHERE UH.UsageDate<=@EndDate AND UH.Void=0
               AND I.CategoryID=@CategoryID
               AND I.FamilyID = @FamilyID
+              AND Approved = 1
             GROUP BY U.ItemID
         ) CC ON CC.ItemID=AA.ItemID
         LEFT JOIN (
@@ -265,6 +266,7 @@ exports.rebuildStockOpnameAscend = async ({ noSO, tgl, isAscend, selections }) =
             INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
             WHERE UH.UsageDate <= @EndDate AND UH.Void=0
               AND I.CategoryID=@CategoryID AND I.FamilyID=@FamilyID
+              AND Approved = 1
             GROUP BY U.ItemID
         ) CC ON CC.ItemID=AA.ItemID
         LEFT JOIN (
