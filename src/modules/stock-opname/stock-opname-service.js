@@ -110,6 +110,7 @@ exports.saveStockOpnameAscend = async ({ tgl, isAscend, selections }) => {
             WHERE UH.UsageDate<=@EndDate AND UH.Void=0
               AND I.CategoryID=@CategoryID
               AND I.FamilyID = @FamilyID
+              AND Approved = 1
             GROUP BY U.ItemID
         ) CC ON CC.ItemID=AA.ItemID
         LEFT JOIN (
@@ -265,6 +266,7 @@ exports.rebuildStockOpnameAscend = async ({ noSO, tgl, isAscend, selections }) =
             INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
             WHERE UH.UsageDate <= @EndDate AND UH.Void=0
               AND I.CategoryID=@CategoryID AND I.FamilyID=@FamilyID
+              AND Approved = 1
             GROUP BY U.ItemID
         ) CC ON CC.ItemID=AA.ItemID
         LEFT JOIN (
@@ -536,22 +538,84 @@ exports.getStockOpnameHasil = async (noSO) => {
       request.input('Tanggal', sql.Date, tglSO);
   
       const result = await request.query(`
-        SELECT ISNULL(SUM(d.Quantity), 0) AS TotalUsage
-        FROM [AS_UC_2017].[dbo].[IC_UsageDetails] d
-        INNER JOIN [AS_UC_2017].[dbo].[IC_Usages] u
-            ON d.UsageID = u.UsageID
-        WHERE u.UsageDate >= @Tanggal
-          AND u.Approved = 1
-          AND d.ItemID = @ItemID
+        SELECT
+            Z.ItemID,
+            (ISNULL(Z.QtyPrcIn,0) - ISNULL(Z.QtyUsg,0) + ISNULL(Z.QtyUbb,0)
+              - ISNULL(Z.QtySls,0) - ISNULL(Z.QtyPR,0)) AS Hasil
+        FROM (
+            SELECT AA.ItemID, AA.ItemCode,
+                   ISNULL(BB.QtyPrcIn,0)  AS QtyPrcIn,
+                   ISNULL(CC.QtyUsg,0)    AS QtyUsg,
+                   ISNULL(DD.QtyUsg,0)    AS QtyUbb,
+                   ISNULL(EE.QtySls,0)    AS QtySls,
+                   ISNULL(FF.QtyPrcOut,0) AS QtyPR
+            FROM (
+                SELECT I.ItemID,I.ItemCode
+                FROM AS_UC_2017.dbo.IC_Items I
+                WHERE I.Disabled = 0
+                  AND I.ItemType = 0
+            ) AA
+            LEFT JOIN (
+                SELECT D.ItemID,
+                       SUM(AS_UC_2017.dbo.UDF_Common_ConvertToSmallestUOMEx(
+                           Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtyPrcIn
+                FROM AS_UC_2017.dbo.AP_PurchaseDetails D
+                JOIN AS_UC_2017.dbo.AP_Purchases P ON P.PurchaseID=D.PurchaseID
+                INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = D.ItemID
+                WHERE P.PurchaseDate >= @Tanggal AND P.Void=0 AND IsPurchase=1
+                GROUP BY D.ItemID
+            ) BB ON BB.ItemID=AA.ItemID
+            LEFT JOIN (
+                SELECT U.ItemID,
+                       SUM(AS_UC_2017.dbo.UDF_Common_ConvertToSmallestUOMEx(
+                           Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtyUsg
+                FROM AS_UC_2017.dbo.IC_UsageDetails U
+                JOIN AS_UC_2017.dbo.IC_Usages UH ON UH.UsageID=U.UsageID
+                INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
+                WHERE UH.UsageDate >= @Tanggal AND UH.Void=0 AND Approved=1
+                GROUP BY U.ItemID
+            ) CC ON CC.ItemID=AA.ItemID
+            LEFT JOIN (
+                SELECT U.ItemID,
+                       SUM(AS_UC_2017.dbo.UDF_Common_ConvertToSmallestUOMEx(
+                           Packing2,Packing3,Packing4,QtyAdjustBy,UOMLevel)) AS QtyUsg
+                FROM AS_UC_2017.dbo.IC_AdjustmentDetails U
+                JOIN AS_UC_2017.dbo.IC_Adjustments UH ON UH.AdjustmentID=U.AdjustmentID
+                INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
+                WHERE UH.AdjustmentDate >= @Tanggal AND UH.Void=0 AND UH.Approved=1
+                GROUP BY U.ItemID
+            ) DD ON DD.ItemID=AA.ItemID
+            LEFT JOIN (
+                SELECT U.ItemID,
+                       SUM(AS_UC_2017.dbo.UDF_Common_ConvertToSmallestUOMEx(
+                           Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtySls
+                FROM AS_UC_2017.dbo.AR_InvoiceDetails U
+                JOIN AS_UC_2017.dbo.AR_Invoices UH ON UH.InvoiceID=U.InvoiceID
+                INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
+                WHERE UH.InvoiceDate >= @Tanggal AND UH.Void=0
+                GROUP BY U.ItemID
+            ) EE ON EE.ItemID=AA.ItemID
+            LEFT JOIN (
+                SELECT D.ItemID,
+                       SUM(AS_UC_2017.dbo.UDF_Common_ConvertToSmallestUOMEx(
+                           Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtyPrcOut
+                FROM AS_UC_2017.dbo.AP_PurchaseDetails D
+                JOIN AS_UC_2017.dbo.AP_Purchases P ON P.PurchaseID=D.PurchaseID
+                INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = D.ItemID
+                WHERE P.PurchaseDate >= @Tanggal AND P.Void=0 AND IsPurchase=0
+                GROUP BY D.ItemID
+            ) FF ON FF.ItemID=AA.ItemID
+        ) Z
+        WHERE Z.ItemID = @ItemID
       `);
   
-      return { success: true, qtyUsage: result.recordset[0]?.TotalUsage || 0.0 };
+      return { success: true, qtyUsage: result.recordset[0]?.Hasil || 0.0 };
     } catch (err) {
       console.error('Error in fetchQtyUsage:', err);
       throw err;
     }
   };
-
+  
   
   exports.deleteStockOpnameHasilAscend = async (noso, itemId) => {
     try {
