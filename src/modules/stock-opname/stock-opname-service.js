@@ -518,7 +518,7 @@ exports.getStockOpnameHasil = async (noSO) => {
         QtyFisik: row.QtyFisik !== null ? row.QtyFisik : null,
         QtyUsage: row.QtyUsage !== null ? row.QtyUsage : -1.0,
         UsageRemark: row.UsageRemark || '',
-        IsUpdateUsage: row.IsUpdateUsage === true
+        IsUpdateUsage: row.IsUpdateUsage
       }));
   
       return { success: true, data: mapped };
@@ -540,7 +540,7 @@ exports.getStockOpnameHasil = async (noSO) => {
       const result = await request.query(`
         SELECT
             Z.ItemID,
-            (ISNULL(Z.QtyPrcIn,0) - ISNULL(Z.QtyUsg,0) + ISNULL(Z.QtyUbb,0)
+            (0 - ISNULL(Z.QtyUsg,0) + ISNULL(Z.QtyUbb,0)
               - ISNULL(Z.QtySls,0) - ISNULL(Z.QtyPR,0)) AS Hasil
         FROM (
             SELECT AA.ItemID, AA.ItemCode,
