@@ -1,0 +1,141 @@
+SELECT
+    --@NoSO,
+    Z.ItemID,
+    (ISNULL(Z.QtyPrcIn,0)-ISNULL(Z.QtyUsg,0)+ISNULL(Z.QtyUbb,0)
+      -ISNULL(Z.QtySls,0)-ISNULL(Z.QtyPR,0)+ISNULL(Z.QtyRTR,0)-ISNULL(Z.QtyAssm,0)-ISNULL(Z.QtyPrcOut,0)) AS Hasil
+	  --,
+    --  @CategoryID,
+    --@FamilyID
+	--*
+	
+FROM (
+    SELECT AA.ItemID, AA.ItemCode,
+           ISNULL(BB.QtyPrcIn,0) AS QtyPrcIn,
+           ISNULL(CC.QtyUsg,0) AS QtyUsg,
+           ISNULL(DD.QtyUsg,0) AS QtyUbb,
+           ISNULL(EE.QtySls,0) AS QtySls,
+           ISNULL(FF.QtyPrcOut,0) AS QtyPR,
+		   ISNULL(GG.QtySlsRT,0) AS QtyRTR,
+		   ISNULL(HH.QtySlsRT,0) AS QtyAssm,
+		   ISNULL(II.QtyPrcOut,0) AS QtyPrcOut
+    FROM (
+        SELECT I.ItemID,I.ItemCode
+        FROM AS_GSU_2022.dbo.IC_Items I
+        WHERE 
+		--I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+  --        AND 
+		  I.Disabled=0
+          AND I.ItemType=0
+		  
+    ) AA
+    LEFT JOIN (
+        SELECT D.ItemID,
+               SUM(AS_GSU_2022.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtyPrcIn
+        FROM AS_GSU_2022.dbo.AP_PurchaseDetails D
+        JOIN AS_GSU_2022.dbo.AP_Purchases P ON P.PurchaseID=D.PurchaseID
+		INNER JOIN AS_GSU_2022.dbo.IC_Items I ON I.ItemID = D.ItemID
+		INNER JOIN AS_GSU_2022.dbo.IC_StockFamily F ON F.FamilyID = I.FamilyID
+        WHERE P.PurchaseDate<'2025-09-21' AND P.Void=0 AND IsPurchase=1
+		--AND I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+		  
+        GROUP BY D.ItemID
+    ) BB ON BB.ItemID=AA.ItemID
+    LEFT JOIN (
+        SELECT U.ItemID,
+               SUM(AS_GSU_2022.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtyUsg
+        FROM AS_GSU_2022.dbo.IC_UsageDetails U
+        JOIN AS_GSU_2022.dbo.IC_Usages UH ON UH.UsageID=U.UsageID
+		INNER JOIN AS_GSU_2022.dbo.IC_Items I ON I.ItemID = U.ItemID
+		INNER JOIN AS_GSU_2022.dbo.IC_StockFamily F ON F.FamilyID = I.FamilyID
+        WHERE UH.UsageDate<='2025-09-21' AND UH.Void=0
+		--AND I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+		  
+        GROUP BY U.ItemID
+    ) CC ON CC.ItemID=AA.ItemID
+    LEFT JOIN (
+        SELECT U.ItemID,
+               SUM(AS_GSU_2022.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,QtyAdjustBy,UOMLevel)) AS QtyUsg
+        FROM AS_GSU_2022.dbo.IC_AdjustmentDetails U
+        JOIN AS_GSU_2022.dbo.IC_Adjustments UH ON UH.AdjustmentID=U.AdjustmentID
+		INNER JOIN AS_GSU_2022.dbo.IC_Items I ON I.ItemID = U.ItemID
+		INNER JOIN AS_GSU_2022.dbo.IC_StockFamily F ON F.FamilyID = I.FamilyID
+        WHERE UH.AdjustmentDate<='2025-09-21' AND UH.Void=0 AND UH.Approved=1
+		--AND I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+		  
+        GROUP BY U.ItemID
+    ) DD ON DD.ItemID=AA.ItemID
+    LEFT JOIN (
+        SELECT U.ItemID,
+               SUM(AS_GSU_2022.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtySls
+        FROM AS_GSU_2022.dbo.AR_InvoiceDetails U
+        inner JOIN AS_GSU_2022.dbo.AR_Invoices UH ON UH.InvoiceID=U.InvoiceID
+		INNER JOIN AS_GSU_2022.dbo.IC_Items I ON I.ItemID = U.ItemID
+		INNER JOIN AS_GSU_2022.dbo.IC_StockFamily F ON F.FamilyID = I.FamilyID
+        WHERE UH.InvoiceDate<='2025-09-21' AND UH.Void=0
+		--AND I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+		  AND DontPostToGL = 0 and IsInvoice = 1
+        GROUP BY U.ItemID
+    ) EE ON EE.ItemID=AA.ItemID
+    LEFT JOIN (
+        SELECT D.ItemID,
+               SUM(AS_GSU_2022.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtyPrcOut
+        FROM AS_GSU_2022.dbo.AP_PurchaseDetails D
+        JOIN AS_GSU_2022.dbo.AP_Purchases P ON P.PurchaseID=D.PurchaseID
+		INNER JOIN AS_GSU_2022.dbo.IC_Items I ON I.ItemID = D.ItemID
+		INNER JOIN AS_GSU_2022.dbo.IC_StockFamily F ON F.FamilyID = I.FamilyID
+        WHERE P.PurchaseDate<'2025-09-21' AND P.Void=0 AND IsPurchase=0
+		--AND I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+		 
+        GROUP BY D.ItemID
+    ) FF ON FF.ItemID=AA.ItemID
+	LEFT JOIN
+	(
+	SELECT U.ItemID,
+               SUM(AS_GSU_2022.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtySlsRT
+        FROM AS_GSU_2022.dbo.AR_InvoiceDetails U
+        inner JOIN AS_GSU_2022.dbo.AR_Invoices UH ON UH.InvoiceID=U.InvoiceID
+		INNER JOIN AS_GSU_2022.dbo.IC_Items I ON I.ItemID = U.ItemID
+		INNER JOIN AS_GSU_2022.dbo.IC_StockFamily F ON F.FamilyID = I.FamilyID
+        WHERE UH.InvoiceDate<='2025-09-21' AND UH.Void=0
+		--AND I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+		  AND DontPostToGL = 0 and IsInvoice = 0
+        GROUP BY U.ItemID
+	) GG ON GG.ItemID = AA.ItemID
+    LEFT JOIN
+	(
+	SELECT U.MaterialItemID,
+               SUM(AS_GSU_2022.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtySlsRT
+        FROM AS_GSU_2022.dbo.IC_AssemblyDetails U
+        inner JOIN AS_GSU_2022.dbo.IC_Assembly UH ON UH.AssemblyID=U.AssemblyID
+		INNER JOIN AS_GSU_2022.dbo.IC_Items I ON I.ItemID = U.MaterialItemID
+		INNER JOIN AS_GSU_2022.dbo.IC_StockFamily F ON F.FamilyID = I.FamilyID
+        WHERE UH.AssemblyDate<='2025-09-21' AND UH.Void=0
+		--AND I.CategoryID=@CategoryID
+  --        AND I.FamilyID = @FamilyID
+		--  AND DontPostToGL = 0 and IsInvoice = 0
+		  --and u.MaterialItemID = 25091
+        GROUP BY U.MaterialItemID
+	) HH ON HH.MaterialItemID = AA.ItemID
+	LEFT JOIN
+	(
+	SELECT D.ItemID,
+                   SUM(AS_UC_2017.dbo.UDF_Common_ConvertToSmallestUOMEx(Packing2,Packing3,Packing4,Quantity,UOMLevel)) AS QtyPrcOut
+            FROM AS_UC_2017.dbo.AP_PurchaseDetails D
+            JOIN AS_UC_2017.dbo.AP_Purchases P ON P.PurchaseID=D.PurchaseID
+            INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = D.ItemID
+            WHERE P.PurchaseDate<'2025-09-21' AND P.Void=0 AND IsPurchase=0
+              --AND I.CategoryID=@CategoryID
+              --AND I.FamilyID = @FamilyID
+            GROUP BY D.ItemID
+	) II ON II.ItemID = AA.ItemID
+
+) Z
+WHERE (ISNULL(Z.QtyPrcIn,0)-ISNULL(Z.QtyUsg,0)+ISNULL(Z.QtyUbb,0)
+        -ISNULL(Z.QtySls,0)-ISNULL(Z.QtyPR,0)+ISNULL(Z.QtyRTR,0)-ISNULL(Z.QtyAssm,0)-ISNULL(Z.QtyPrcOut,0))<>0;
