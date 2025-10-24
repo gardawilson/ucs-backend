@@ -15,7 +15,7 @@ exports.getStockOpnameList = async (req, res) => {
 
 exports.saveStockOpnameAscend = async (req, res) => {
   try {
-    const { tgl, isAscend, selections } = req.body || {};
+    const { tgl, isAscend, selections, warehouseIds } = req.body || {};
 
     if (!tgl) {
       return res.status(400).json({ success: false, message: 'Field tgl wajib diisi' });
@@ -24,7 +24,7 @@ exports.saveStockOpnameAscend = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Field selections minimal 1' });
     }
 
-    const result = await stockOpnameService.saveStockOpnameAscend({ tgl, isAscend, selections });
+    const result = await stockOpnameService.saveStockOpnameAscend({ tgl, isAscend, selections, warehouseIds, });
     res.status(201).json(result);
   } catch (err) {
     res.status(500).json({
@@ -39,7 +39,7 @@ exports.saveStockOpnameAscend = async (req, res) => {
 exports.rebuildStockOpnameAscend = async (req, res) => {
   try {
     const { noSO } = req.params;
-    const { tgl, isAscend, selections } = req.body || {};
+    const { tgl, isAscend, selections, warehouseIds } = req.body || {};
 
     if (!noSO) {
       return res.status(400).json({ success: false, message: 'Field noSO wajib diisi' });
@@ -51,7 +51,7 @@ exports.rebuildStockOpnameAscend = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Field selections minimal 1' });
     }
 
-    const result = await stockOpnameService.rebuildStockOpnameAscend({ noSO, tgl, isAscend, selections });
+    const result = await stockOpnameService.rebuildStockOpnameAscend({ noSO, tgl, isAscend, selections, warehouseIds });
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({
