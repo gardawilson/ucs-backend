@@ -836,7 +836,7 @@ exports.getStockOpnameHasil = async (noSO) => {
   };
 
   exports.getStockOpnameWarehouses = async (noSO) => {
-  const { sql, connectDb } = require('././core/config/db');
+  const { sql, connectDb } = require('../../core/config/db');
   await connectDb();
   const result = await sql.query`
     SELECT IdWarehouse
