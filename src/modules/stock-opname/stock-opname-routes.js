@@ -45,4 +45,6 @@ router.post('/:noSO/items/save', verifyToken, stockOpnameController.saveStockOpn
 router.get('/:noSO/warehouses', verifyToken, stockOpnameController.getStockOpnameWarehouses);
 // ...
 
+
+
 module.exports = router;

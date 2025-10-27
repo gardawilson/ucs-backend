@@ -836,20 +836,15 @@ exports.getStockOpnameHasil = async (noSO) => {
   };
 
   exports.getStockOpnameWarehouses = async (noSO) => {
-  const { sql, connectDb } = require('../../core/config/db');
-  try {
-    await connectDb();
-    const result = await sql.query`
-      SELECT IdWarehouse
-      FROM dbo.StockOpname_h_WarehouseID
-      WHERE NoSO = ${noSO}
-      ORDER BY IdWarehouse
-    `;
-    const ids = result.recordset.map(r => r.IdWarehouse);
-    return { success: true, noSO, warehouseIds: ids };
-  } catch (err) {
-    console.error('Error in getStockOpnameWarehouses:', err);
-    throw err;
-  }
+  const { sql, connectDb } = require('././core/config/db');
+  await connectDb();
+  const result = await sql.query`
+    SELECT IdWarehouse
+    FROM dbo.StockOpname_h_WarehouseID
+    WHERE NoSO = ${noSO}
+    ORDER BY IdWarehouse
+  `;
+  const ids = result.recordset.map(r => r.IdWarehouse);
+  return { success: true, noSO, warehouseIds: ids };
 };
   
