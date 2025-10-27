@@ -439,7 +439,7 @@ FROM (
 ) Z
 -- kalau mau, boleh aktifkan lagi filter hasil non-zero:
 WHERE (ISNULL(Z.QtyPrcIn,0)-ISNULL(Z.QtyUsg,0)+ISNULL(Z.QtyUbb,0)-ISNULL(Z.QtySls,0)-ISNULL(Z.QtyPR,0)+ISNULL(Z.TRFIN,0)-ISNULL(Z.TRFOUT,0))<>0
-;
+;gg
     `;
 
     let insertedFamilies = 0;
@@ -834,4 +834,22 @@ exports.getStockOpnameHasil = async (noSO) => {
       if (pool) await pool.close();
     }
   };
+
+  exports.getStockOpnameWarehouses = async (noSO) => {
+  const { sql, connectDb } = require('../../core/config/db');
+  try {
+    await connectDb();
+    const result = await sql.query`
+      SELECT IdWarehouse
+      FROM dbo.StockOpname_h_WarehouseID
+      WHERE NoSO = ${noSO}
+      ORDER BY IdWarehouse
+    `;
+    const ids = result.recordset.map(r => r.IdWarehouse);
+    return { success: true, noSO, warehouseIds: ids };
+  } catch (err) {
+    console.error('Error in getStockOpnameWarehouses:', err);
+    throw err;
+  }
+};
   
