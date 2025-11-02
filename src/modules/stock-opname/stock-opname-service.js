@@ -143,7 +143,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Usages UH ON UH.UsageID = U.UsageID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = U.WarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
-        WHERE UH.UsageDate <= @EndDate AND UH.Void = 0 AND Approved = 1
+        WHERE UH.UsageDate < @EndDate AND UH.Void = 0 AND Approved = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY U.ItemID
     ) CC ON CC.ItemID = AA.ItemID
@@ -156,7 +156,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Adjustments UH ON UH.AdjustmentID = U.AdjustmentID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = U.WarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
-        WHERE UH.AdjustmentDate <= @EndDate AND UH.Void = 0 AND UH.Approved = 1
+        WHERE UH.AdjustmentDate < @EndDate AND UH.Void = 0 AND UH.Approved = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY U.ItemID
     ) DD ON DD.ItemID = AA.ItemID
@@ -169,7 +169,7 @@ FROM (
         JOIN AS_UC_2017.dbo.AR_Invoices UH ON UH.InvoiceID = U.InvoiceID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = U.WarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
-        WHERE UH.InvoiceDate <= @EndDate AND UH.Void = 0
+        WHERE UH.InvoiceDate < @EndDate AND UH.Void = 0
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY U.ItemID
     ) EE ON EE.ItemID = AA.ItemID
@@ -367,7 +367,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Usages UH ON UH.UsageID = U.UsageID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = U.WarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
-        WHERE UH.UsageDate <= @EndDate AND UH.Void = 0 AND Approved = 1
+        WHERE UH.UsageDate < @EndDate AND UH.Void = 0 AND Approved = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY U.ItemID
     ) CC ON CC.ItemID = AA.ItemID
@@ -380,7 +380,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Adjustments UH ON UH.AdjustmentID = U.AdjustmentID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = U.WarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
-        WHERE UH.AdjustmentDate <= @EndDate AND UH.Void = 0 AND UH.Approved = 1
+        WHERE UH.AdjustmentDate < @EndDate AND UH.Void = 0 AND UH.Approved = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY U.ItemID
     ) DD ON DD.ItemID = AA.ItemID
@@ -393,7 +393,7 @@ FROM (
         JOIN AS_UC_2017.dbo.AR_Invoices UH ON UH.InvoiceID = U.InvoiceID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = U.WarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = U.ItemID
-        WHERE UH.InvoiceDate <= @EndDate AND UH.Void = 0
+        WHERE UH.InvoiceDate < @EndDate AND UH.Void = 0
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY U.ItemID
     ) EE ON EE.ItemID = AA.ItemID
