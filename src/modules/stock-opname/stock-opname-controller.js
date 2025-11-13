@@ -1,4 +1,5 @@
 const stockOpnameService = require('./stock-opname-service');
+const { toApiDate } = require('../../core/utils/date-time-utils'); 
 
 exports.getStockOpnameList = async (req, res) => {
   try {
@@ -208,27 +209,44 @@ exports.getStockOpnameHasil = async (req, res) => {
 
 
 exports.fetchQtyUsage = async (req, res) => {
-    try {
-      const { itemId } = req.params;
-      const { tglSO } = req.query; // ambil dari query param
-  
-      if (!itemId || !tglSO) {
-        return res.status(400).json({
-          success: false,
-          message: 'Parameter itemId dan tglSO wajib diisi'
-        });
-      }
-  
-      const result = await stockOpnameService.fetchQtyUsage(itemId, tglSO);
-      res.status(200).json(result);
-    } catch (err) {
-      res.status(500).json({
+  try {
+    const { itemId } = req.params;
+    const { tglSO } = req.query; // contoh: "Thursday, 13 Nov 2025"
+
+    if (!itemId || !tglSO) {
+      return res.status(400).json({
         success: false,
-        message: 'Terjadi kesalahan di server',
-        detail: err.message
+        message: 'Parameter itemId dan tglSO wajib diisi',
       });
     }
-  };
+
+    // 🔹 Convert ke format untuk API/SQL
+    const tglSoRaw = toApiDate(tglSO);
+
+    if (!tglSoRaw) {
+      console.error('[fetchQtyUsage] tglSO tidak valid:', tglSO);
+      return res.status(400).json({
+        success: false,
+        message: 'Format tglSO tidak valid',
+      });
+    }
+
+    console.log('[fetchQtyUsage] tglSO (raw query):', tglSO);
+    console.log('[fetchQtyUsage] tglSO (API/raw):', tglSoRaw);
+
+    // Kirim ke service pakai raw date
+    const result = await stockOpnameService.fetchQtyUsage(itemId, tglSoRaw);
+
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('[fetchQtyUsage] ERROR:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan di server',
+      detail: err.message,
+    });
+  }
+};
   
 
   exports.deleteStockOpnameHasilAscend = async (req, res) => {
