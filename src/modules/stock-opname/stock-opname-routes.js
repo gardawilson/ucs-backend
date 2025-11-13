@@ -41,5 +41,10 @@ router.delete('/:noSO/items/:itemId', verifyToken, stockOpnameController.deleteS
 router.post('/:noSO/items/save', verifyToken, stockOpnameController.saveStockOpnameAscendHasil);
 
 
+// GET warehouse IDs by NoSO
+router.get('/:noSO/warehouses', verifyToken, stockOpnameController.getStockOpnameWarehouses);
+// ...
+
+
 
 module.exports = router;
