@@ -622,7 +622,20 @@ exports.getStockOpnameHasil = async (noSO) => {
     try {
       await connectDb();
   
+      const kw = '%' + (keyword || '') + '%';
+  
       const result = await sql.query`
+        -- Agregasi shelf per ItemID agar tidak menduplikasi baris
+        WITH ShelfPerItem AS (
+          SELECT
+            iwd.ItemID,
+            STRING_AGG(LTRIM(RTRIM(iwd.ShelfCode)), ', ') 
+              WITHIN GROUP (ORDER BY LTRIM(RTRIM(iwd.ShelfCode))) AS ShelfCodes
+          FROM [AS_UC_2017].[dbo].[IC_ItemWarehouseDetails] AS iwd
+          WHERE iwd.ShelfCode IS NOT NULL 
+            AND LTRIM(RTRIM(iwd.ShelfCode)) <> ''
+          GROUP BY iwd.ItemID
+        )
         SELECT 
           so.NoSO,
           so.ItemID,
@@ -632,17 +645,20 @@ exports.getStockOpnameHasil = async (noSO) => {
           sh.QtyFisik,
           sh.QtyUsage,
           sh.UsageRemark,
-          sh.IsUpdateUsage
-        FROM [dbo].[StockOpnameAscend] so
-        LEFT JOIN [AS_UC_2017].[dbo].[IC_Items] it 
+          sh.IsUpdateUsage,
+          spi.ShelfCodes AS ShelfCode
+        FROM [dbo].[StockOpnameAscend] AS so
+        LEFT JOIN [AS_UC_2017].[dbo].[IC_Items] AS it 
                ON so.ItemID = it.ItemID
-        LEFT JOIN [dbo].[StockOpnameAscendHasil] sh 
-               ON so.NoSO = sh.NoSO 
+        LEFT JOIN [dbo].[StockOpnameAscendHasil] AS sh 
+               ON so.NoSO  = sh.NoSO 
               AND so.ItemID = sh.ItemID
+        LEFT JOIN ShelfPerItem AS spi
+               ON spi.ItemID = so.ItemID
         WHERE so.NoSO = ${noSO}
           AND so.FamilyID = ${familyID}
-          AND (so.ItemID LIKE ${'%' + (keyword || '') + '%'} 
-               OR it.ItemName LIKE ${'%' + (keyword || '') + '%'})
+          AND (so.ItemID   LIKE ${kw}
+               OR it.ItemName LIKE ${kw})
         ORDER BY it.ItemName ASC
       `;
   
@@ -655,6 +671,7 @@ exports.getStockOpnameHasil = async (noSO) => {
         ItemID: row.ItemID,
         ItemCode: row.ItemCode,
         ItemName: row.ItemName,
+        ShelfCode: row.ShelfCode || '',      // ⬅️ tambah ini
         Pcs: row.Pcs,
         QtyFisik: row.QtyFisik !== null ? row.QtyFisik : null,
         QtyUsage: row.QtyUsage !== null ? row.QtyUsage : -1.0,
@@ -668,7 +685,7 @@ exports.getStockOpnameHasil = async (noSO) => {
       throw err;
     }
   };
-
+  
 
   exports.fetchQtyUsage = async (itemId, tglSO) => {
     try {
