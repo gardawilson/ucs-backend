@@ -7,7 +7,7 @@ exports.getStockOpnameList = async () => {
     const result = await sql.query`
       SELECT NoSO, Tgl, IsAscend 
       FROM dbo.StockOpname_h 
-      ORDER BY NoSO
+      ORDER BY NoSO Tgl DESC, NoSO Desc 
     `;
 
     // Mapping hasil query supaya Tgl diformat
@@ -197,7 +197,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Mutations P ON P.MutationID = D.MutationID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = P.DestinationWarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = D.ItemID
-        WHERE P.MutationDate < @EndDate AND P.Void = 0
+        WHERE P.MutationDate < @EndDate AND P.Void = 0 and p.IsReceived = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY D.ItemID
     ) GG ON GG.ItemID = AA.ItemID
@@ -210,7 +210,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Mutations P ON P.MutationID = D.MutationID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = P.SourceWarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = D.ItemID
-        WHERE P.MutationDate < @EndDate AND P.Void = 0
+        WHERE P.MutationDate < @EndDate AND P.Void = 0 and p.IsReceived = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY D.ItemID
     ) HH ON HH.ItemID = AA.ItemID
@@ -426,7 +426,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Mutations P ON P.MutationID = D.MutationID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = P.DestinationWarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = D.ItemID
-        WHERE P.MutationDate < @EndDate AND P.Void = 0
+        WHERE P.MutationDate < @EndDate AND P.Void = 0 and p.IsReceived = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY D.ItemID
     ) GG ON GG.ItemID = AA.ItemID
@@ -439,7 +439,7 @@ FROM (
         JOIN AS_UC_2017.dbo.IC_Mutations P ON P.MutationID = D.MutationID
         JOIN dbo.StockOpname_h_WarehouseID W ON W.NoSO = @NoSO AND W.IdWarehouse = P.SourceWarehouseID
         INNER JOIN AS_UC_2017.dbo.IC_Items I ON I.ItemID = D.ItemID
-        WHERE P.MutationDate < @EndDate AND P.Void = 0
+        WHERE P.MutationDate < @EndDate AND P.Void = 0 and p.IsReceived = 1
           AND I.CategoryID = @CategoryID AND I.FamilyID = @FamilyID
         GROUP BY D.ItemID
     ) HH ON HH.ItemID = AA.ItemID
