@@ -1,6 +1,5 @@
-const { sql, connectDb } = require('../../core/config/db');
-const { formatDate } = require('../../core/utils/date-time-utils');
-
+const { sql, connectDb } = require("../../core/config/db");
+const { formatDate } = require("../../core/utils/date-time-utils");
 
 exports.getStockOpnameList = async () => {
   try {
@@ -12,20 +11,24 @@ exports.getStockOpnameList = async () => {
     `;
 
     // Mapping hasil query supaya Tgl diformat
-    const data = result.recordset.map(row => ({
+    const data = result.recordset.map((row) => ({
       ...row,
-      Tgl: formatDate(row.Tgl),   // format tanggal
+      Tgl: formatDate(row.Tgl), // format tanggal
     }));
 
     return { success: true, data };
   } catch (err) {
-    console.error('Error in stockOpname service:', err);
+    console.error("Error in stockOpname service:", err);
     throw err;
   }
 };
 
-
-exports.saveStockOpnameAscend = async ({ tgl, isAscend, selections, warehouseIds }) => {
+exports.saveStockOpnameAscend = async ({
+  tgl,
+  isAscend,
+  selections,
+  warehouseIds,
+}) => {
   let pool;
   let transaction;
   try {
@@ -44,44 +47,43 @@ exports.saveStockOpnameAscend = async ({ tgl, isAscend, selections, warehouseIds
 
     let nextNum = 1;
     if (last.recordset.length > 0) {
-      const m = /^Q\.(\d+)$/.exec(last.recordset[0].NoSO || '');
+      const m = /^Q\.(\d+)$/.exec(last.recordset[0].NoSO || "");
       if (m) nextNum = parseInt(m[1], 10) + 1;
     }
-    const noSO = `Q.${String(nextNum).padStart(6, '0')}`;
+    const noSO = `Q.${String(nextNum).padStart(6, "0")}`;
 
     // --- insert header ---
     await new sql.Request(transaction)
-      .input('NoSO', sql.VarChar(13), noSO)
-      .input('Tgl', sql.Date, new Date(tgl))
-      .input('IsAscend', sql.Bit, !!isAscend)
-      .query(`
+      .input("NoSO", sql.VarChar(13), noSO)
+      .input("Tgl", sql.Date, new Date(tgl))
+      .input("IsAscend", sql.Bit, !!isAscend).query(`
         INSERT INTO dbo.StockOpname_h (NoSO, Tgl, IsAscend)
         VALUES (@NoSO, @Tgl, @IsAscend);
       `);
 
     // === [BARU] Validasi & simpan warehouses terpilih ===
     const whIds = Array.isArray(warehouseIds)
-      ? warehouseIds.map(n => parseInt(n, 10)).filter(Number.isFinite)
+      ? warehouseIds.map((n) => parseInt(n, 10)).filter(Number.isFinite)
       : [];
-    if (whIds.length === 0) throw new Error('warehouseIds wajib diisi (minimal 1).');
+    if (whIds.length === 0)
+      throw new Error("warehouseIds wajib diisi (minimal 1).");
 
     // NoSO baru -> aman, tapi untuk konsistensi kosongkan dulu
     await new sql.Request(transaction)
-      .input('NoSO', sql.VarChar(13), noSO)
+      .input("NoSO", sql.VarChar(13), noSO)
       .query(`DELETE FROM dbo.StockOpname_h_WarehouseID WHERE NoSO=@NoSO;`);
 
     for (const wid of whIds) {
       await new sql.Request(transaction)
-        .input('NoSO', sql.VarChar(13), noSO)
-        .input('IdWarehouse', sql.Int, wid)
-        .query(`
+        .input("NoSO", sql.VarChar(13), noSO)
+        .input("IdWarehouse", sql.Int, wid).query(`
           INSERT INTO dbo.StockOpname_h_WarehouseID (NoSO, IdWarehouse)
           VALUES (@NoSO, @IdWarehouse);
         `);
     }
 
     // CSV untuk filter IN (...)
-    const whCsv = whIds.join(',');
+    const whCsv = whIds.join(",");
 
     // --- template insert family (tanpa perubahan) ---
     const sqlInsHead = `
@@ -223,23 +225,25 @@ WHERE (ISNULL(Z.QtyPrcIn,0)-ISNULL(Z.QtyUsg,0)+ISNULL(Z.QtyUbb,0)-ISNULL(Z.QtySl
 
     for (const sel of selections) {
       const catId = parseInt(sel.categoryId, 10);
-      const famIds = Array.isArray(sel.familyIds) ? sel.familyIds.map(x => parseInt(x, 10)).filter(Number.isFinite) : [];
+      const famIds = Array.isArray(sel.familyIds)
+        ? sel.familyIds.map((x) => parseInt(x, 10)).filter(Number.isFinite)
+        : [];
       if (!Number.isFinite(catId) || famIds.length === 0) continue;
 
       for (const famId of famIds) {
         await new sql.Request(transaction)
-          .input('NoSO', sql.VarChar(13), noSO)
-          .input('CategoryID', sql.Int, catId)
-          .input('FamilyID', sql.Int, famId)
+          .input("NoSO", sql.VarChar(13), noSO)
+          .input("CategoryID", sql.Int, catId)
+          .input("FamilyID", sql.Int, famId)
           .query(sqlInsHead);
         insertedFamilies++;
 
         const r = await new sql.Request(transaction)
-          .input('NoSO', sql.VarChar(13), noSO)
-          .input('CategoryID', sql.Int, catId)
-          .input('FamilyID', sql.Int, famId)
-          .input('EndDate', sql.Date, new Date(tgl))
-          .input('WarehouseCSV', sql.VarChar, whCsv) // <<< PENTING
+          .input("NoSO", sql.VarChar(13), noSO)
+          .input("CategoryID", sql.Int, catId)
+          .input("FamilyID", sql.Int, famId)
+          .input("EndDate", sql.Date, new Date(tgl))
+          .input("WarehouseCSV", sql.VarChar, whCsv) // <<< PENTING
           .query(sqlInsDetail);
 
         insertedDetailRows += r.rowsAffected?.[0] ?? 0;
@@ -250,15 +254,20 @@ WHERE (ISNULL(Z.QtyPrcIn,0)-ISNULL(Z.QtyUsg,0)+ISNULL(Z.QtyUbb,0)-ISNULL(Z.QtySl
     return { success: true, noSO, insertedFamilies, insertedDetailRows };
   } catch (err) {
     if (transaction) await transaction.rollback();
-    console.error('Error in saveStockOpnameAscend:', err);
+    console.error("Error in saveStockOpnameAscend:", err);
     throw err;
   } finally {
     if (pool) await pool.close();
   }
 };
 
-
-exports.rebuildStockOpnameAscend = async ({ noSO, tgl, isAscend, selections, warehouseIds }) => {
+exports.rebuildStockOpnameAscend = async ({
+  noSO,
+  tgl,
+  isAscend,
+  selections,
+  warehouseIds,
+}) => {
   let pool;
   let transaction;
   try {
@@ -268,10 +277,9 @@ exports.rebuildStockOpnameAscend = async ({ noSO, tgl, isAscend, selections, war
 
     // upsert header (sudah OK)
     await new sql.Request(transaction)
-      .input('NoSO', sql.VarChar(13), noSO)
-      .input('Tgl', sql.Date, new Date(tgl))
-      .input('IsAscend', sql.Bit, !!isAscend)
-      .query(`
+      .input("NoSO", sql.VarChar(13), noSO)
+      .input("Tgl", sql.Date, new Date(tgl))
+      .input("IsAscend", sql.Bit, !!isAscend).query(`
         IF EXISTS (SELECT 1 FROM dbo.StockOpname_h WHERE NoSO=@NoSO)
           UPDATE dbo.StockOpname_h SET Tgl=@Tgl, IsAscend=@IsAscend WHERE NoSO=@NoSO;
         ELSE
@@ -279,8 +287,7 @@ exports.rebuildStockOpnameAscend = async ({ noSO, tgl, isAscend, selections, war
       `);
 
     // hapus detail lama
-    await new sql.Request(transaction)
-      .input('NoSO', sql.VarChar(13), noSO)
+    await new sql.Request(transaction).input("NoSO", sql.VarChar(13), noSO)
       .query(`
         DELETE FROM dbo.StockOpnameAscend         WHERE NoSO=@NoSO;
         DELETE FROM dbo.StockOpnameAscend_dFamily WHERE NoSO=@NoSO;
@@ -288,24 +295,24 @@ exports.rebuildStockOpnameAscend = async ({ noSO, tgl, isAscend, selections, war
 
     // === [BARU] rebuild mapping warehouse ===
     const whIds = Array.isArray(warehouseIds)
-      ? warehouseIds.map(n => parseInt(n, 10)).filter(Number.isFinite)
+      ? warehouseIds.map((n) => parseInt(n, 10)).filter(Number.isFinite)
       : [];
-    if (whIds.length === 0) throw new Error('warehouseIds wajib diisi (minimal 1).');
+    if (whIds.length === 0)
+      throw new Error("warehouseIds wajib diisi (minimal 1).");
 
     await new sql.Request(transaction)
-      .input('NoSO', sql.VarChar(13), noSO)
+      .input("NoSO", sql.VarChar(13), noSO)
       .query(`DELETE FROM dbo.StockOpname_h_WarehouseID WHERE NoSO=@NoSO;`);
 
     for (const wid of whIds) {
       await new sql.Request(transaction)
-        .input('NoSO', sql.VarChar(13), noSO)
-        .input('IdWarehouse', sql.Int, wid)
-        .query(`
+        .input("NoSO", sql.VarChar(13), noSO)
+        .input("IdWarehouse", sql.Int, wid).query(`
           INSERT INTO dbo.StockOpname_h_WarehouseID (NoSO, IdWarehouse)
           VALUES (@NoSO, @IdWarehouse);
         `);
     }
-    const whCsv = whIds.join(',');
+    const whCsv = whIds.join(",");
 
     // template head (tanpa perubahan)
     const sqlInsHead = `
@@ -447,23 +454,25 @@ WHERE (ISNULL(Z.QtyPrcIn,0)-ISNULL(Z.QtyUsg,0)+ISNULL(Z.QtyUbb,0)-ISNULL(Z.QtySl
 
     for (const sel of selections) {
       const categoryId = parseInt(sel.categoryId, 10);
-      const famIds = Array.isArray(sel.familyIds) ? sel.familyIds.map(v => parseInt(v, 10)).filter(Number.isFinite) : [];
+      const famIds = Array.isArray(sel.familyIds)
+        ? sel.familyIds.map((v) => parseInt(v, 10)).filter(Number.isFinite)
+        : [];
       if (!Number.isFinite(categoryId) || famIds.length === 0) continue;
 
       for (const famId of famIds) {
         await new sql.Request(transaction)
-          .input('NoSO', sql.VarChar(13), noSO)
-          .input('CategoryID', sql.Int, categoryId)
-          .input('FamilyID', sql.Int, famId)
+          .input("NoSO", sql.VarChar(13), noSO)
+          .input("CategoryID", sql.Int, categoryId)
+          .input("FamilyID", sql.Int, famId)
           .query(sqlInsHead);
         insertedFamilies++;
 
         const r = await new sql.Request(transaction)
-          .input('NoSO', sql.VarChar(13), noSO)
-          .input('CategoryID', sql.Int, categoryId)
-          .input('FamilyID', sql.Int, famId)
-          .input('EndDate', sql.Date, new Date(tgl))
-          .input('WarehouseCSV', sql.VarChar, whCsv) // <<< PENTING
+          .input("NoSO", sql.VarChar(13), noSO)
+          .input("CategoryID", sql.Int, categoryId)
+          .input("FamilyID", sql.Int, famId)
+          .input("EndDate", sql.Date, new Date(tgl))
+          .input("WarehouseCSV", sql.VarChar, whCsv) // <<< PENTING
           .query(sqlInsDetail);
 
         insertedDetailRows += r.rowsAffected?.[0] ?? 0;
@@ -474,13 +483,12 @@ WHERE (ISNULL(Z.QtyPrcIn,0)-ISNULL(Z.QtyUsg,0)+ISNULL(Z.QtyUbb,0)-ISNULL(Z.QtySl
     return { success: true, noSO, insertedFamilies, insertedDetailRows };
   } catch (err) {
     if (transaction) await transaction.rollback();
-    console.error('Error in rebuildStockOpnameAscend:', err);
+    console.error("Error in rebuildStockOpnameAscend:", err);
     throw err;
   } finally {
     if (pool) await pool.close();
   }
 };
-
 
 exports.deleteStockOpnameFull = async (noSO) => {
   let pool;
@@ -490,14 +498,28 @@ exports.deleteStockOpnameFull = async (noSO) => {
     transaction = new sql.Transaction(pool);
     await transaction.begin();
 
-    const reqDel = new sql.Request(transaction).input('NoSO', sql.VarChar(13), noSO);
+    const reqDel = new sql.Request(transaction).input(
+      "NoSO",
+      sql.VarChar(13),
+      noSO,
+    );
 
     // Urutan delete: hasil → ascend → dFamily → h_WarehouseID → header
-    const delHasil   = await reqDel.query('DELETE FROM dbo.StockOpnameAscendHasil       WHERE NoSO=@NoSO;');
-    const delAscend  = await reqDel.query('DELETE FROM dbo.StockOpnameAscend           WHERE NoSO=@NoSO;');
-    const delDFam    = await reqDel.query('DELETE FROM dbo.StockOpnameAscend_dFamily   WHERE NoSO=@NoSO;');
-    const delWhLinks = await reqDel.query('DELETE FROM dbo.StockOpname_h_WarehouseID   WHERE NoSO=@NoSO;');
-    const delHeader  = await reqDel.query('DELETE FROM dbo.StockOpname_h               WHERE NoSO=@NoSO;');
+    const delHasil = await reqDel.query(
+      "DELETE FROM dbo.StockOpnameAscendHasil       WHERE NoSO=@NoSO;",
+    );
+    const delAscend = await reqDel.query(
+      "DELETE FROM dbo.StockOpnameAscend           WHERE NoSO=@NoSO;",
+    );
+    const delDFam = await reqDel.query(
+      "DELETE FROM dbo.StockOpnameAscend_dFamily   WHERE NoSO=@NoSO;",
+    );
+    const delWhLinks = await reqDel.query(
+      "DELETE FROM dbo.StockOpname_h_WarehouseID   WHERE NoSO=@NoSO;",
+    );
+    const delHeader = await reqDel.query(
+      "DELETE FROM dbo.StockOpname_h               WHERE NoSO=@NoSO;",
+    );
 
     await transaction.commit();
 
@@ -505,22 +527,21 @@ exports.deleteStockOpnameFull = async (noSO) => {
       success: true,
       noSO,
       deleted: {
-        StockOpnameAscendHasil:      delHasil.rowsAffected?.[0] ?? 0,
-        StockOpnameAscend:           delAscend.rowsAffected?.[0] ?? 0,
-        StockOpnameAscend_dFamily:   delDFam.rowsAffected?.[0] ?? 0,
-        StockOpname_h_WarehouseID:   delWhLinks.rowsAffected?.[0] ?? 0,
-        StockOpname_h:               delHeader.rowsAffected?.[0] ?? 0
-      }
+        StockOpnameAscendHasil: delHasil.rowsAffected?.[0] ?? 0,
+        StockOpnameAscend: delAscend.rowsAffected?.[0] ?? 0,
+        StockOpnameAscend_dFamily: delDFam.rowsAffected?.[0] ?? 0,
+        StockOpname_h_WarehouseID: delWhLinks.rowsAffected?.[0] ?? 0,
+        StockOpname_h: delHeader.rowsAffected?.[0] ?? 0,
+      },
     };
   } catch (err) {
     if (transaction) await transaction.rollback();
-    console.error('Error in deleteStockOpnameFull:', err);
+    console.error("Error in deleteStockOpnameFull:", err);
     throw err;
   } finally {
     if (pool) await pool.close();
   }
 };
-
 
 exports.getStockOpnameSelections = async (noSO) => {
   try {
@@ -542,16 +563,15 @@ exports.getStockOpnameSelections = async (noSO) => {
 
     const selections = [...map.entries()].map(([categoryId, familyIds]) => ({
       categoryId,
-      familyIds
+      familyIds,
     }));
 
     return { success: true, noSO, selections };
   } catch (err) {
-    console.error('Error in getStockOpnameSelections:', err);
+    console.error("Error in getStockOpnameSelections:", err);
     throw err;
   }
 };
-
 
 exports.getStockOpnameHasil = async (noSO) => {
   try {
@@ -571,19 +591,16 @@ exports.getStockOpnameHasil = async (noSO) => {
 
     return { success: true, noSO, data: result.recordset };
   } catch (err) {
-    console.error('Error in getStockOpnameHasil:', err);
+    console.error("Error in getStockOpnameHasil:", err);
     throw err;
   }
 };
 
+exports.getStockOpnameFamilies = async (noSO) => {
+  try {
+    await connectDb();
 
-
-
-  exports.getStockOpnameFamilies = async (noSO) => {
-    try {
-      await connectDb();
-  
-      const result = await sql.query`
+    const result = await sql.query`
         SELECT 
           f.NoSO,
           f.CategoryID,
@@ -605,26 +622,25 @@ exports.getStockOpnameHasil = async (noSO) => {
         GROUP BY f.NoSO, f.CategoryID, f.FamilyID, sf.FamilyName
         ORDER BY f.FamilyID ASC
       `;
-  
-      if (!result.recordset || result.recordset.length === 0) {
-        return { success: true, data: [] };
-      }
-  
-      return { success: true, data: result.recordset };
-    } catch (err) {
-      console.error('Error in getStockOpnameFamilies:', err);
-      throw err;
-    }
-  };
-  
 
-  exports.getStockOpnameAscendData = async ({ noSO, familyID, keyword }) => {
-    try {
-      await connectDb();
-  
-      const kw = '%' + (keyword || '') + '%';
-  
-      const result = await sql.query`
+    if (!result.recordset || result.recordset.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    return { success: true, data: result.recordset };
+  } catch (err) {
+    console.error("Error in getStockOpnameFamilies:", err);
+    throw err;
+  }
+};
+
+exports.getStockOpnameAscendData = async ({ noSO, familyID, keyword }) => {
+  try {
+    await connectDb();
+
+    const kw = "%" + (keyword || "") + "%";
+
+    const result = await sql.query`
         -- Agregasi shelf per ItemID agar tidak menduplikasi baris
         WITH ShelfPerItem AS (
           SELECT
@@ -661,41 +677,40 @@ exports.getStockOpnameHasil = async (noSO) => {
                OR it.ItemName LIKE ${kw})
         ORDER BY it.ItemName ASC
       `;
-  
-      if (!result.recordset || result.recordset.length === 0) {
-        return { success: true, data: [] };
-      }
-  
-      const mapped = result.recordset.map(row => ({
-        NoSO: row.NoSO,
-        ItemID: row.ItemID,
-        ItemCode: row.ItemCode,
-        ItemName: row.ItemName,
-        ShelfCode: row.ShelfCode || '',      // ⬅️ tambah ini
-        Pcs: row.Pcs,
-        QtyFisik: row.QtyFisik !== null ? row.QtyFisik : null,
-        QtyUsage: row.QtyUsage !== null ? row.QtyUsage : -1.0,
-        UsageRemark: row.UsageRemark || '',
-        IsUpdateUsage: row.IsUpdateUsage
-      }));
-  
-      return { success: true, data: mapped };
-    } catch (err) {
-      console.error('Error in getStockOpnameAscendData:', err);
-      throw err;
-    }
-  };
-  
 
-  exports.fetchQtyUsage = async (itemId, tglSO) => {
-    try {
-      await connectDb();
-  
-      const request = new sql.Request();
-      request.input('ItemID', sql.Int, itemId);
-      request.input('Tanggal', sql.Date, tglSO);
-  
-      const result = await request.query(`
+    if (!result.recordset || result.recordset.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const mapped = result.recordset.map((row) => ({
+      NoSO: row.NoSO,
+      ItemID: row.ItemID,
+      ItemCode: row.ItemCode,
+      ItemName: row.ItemName,
+      ShelfCode: row.ShelfCode || "", // ⬅️ tambah ini
+      Pcs: row.Pcs,
+      QtyFisik: row.QtyFisik !== null ? row.QtyFisik : null,
+      QtyUsage: row.QtyUsage !== null ? row.QtyUsage : -1.0,
+      UsageRemark: row.UsageRemark || "",
+      IsUpdateUsage: row.IsUpdateUsage,
+    }));
+
+    return { success: true, data: mapped };
+  } catch (err) {
+    console.error("Error in getStockOpnameAscendData:", err);
+    throw err;
+  }
+};
+
+exports.fetchQtyUsage = async (itemId, tglSO) => {
+  try {
+    await connectDb();
+
+    const request = new sql.Request();
+    request.input("ItemID", sql.Int, itemId);
+    request.input("Tanggal", sql.Date, tglSO);
+
+    const result = await request.query(`
         SELECT
             Z.ItemID,
             (0 - ISNULL(Z.QtyUsg,0) + ISNULL(Z.QtyUbb,0)
@@ -766,61 +781,58 @@ exports.getStockOpnameHasil = async (noSO) => {
         ) Z
         WHERE Z.ItemID = @ItemID
       `);
-  
-      return { success: true, qtyUsage: result.recordset[0]?.Hasil || 0.0 };
-    } catch (err) {
-      console.error('Error in fetchQtyUsage:', err);
-      throw err;
-    }
-  };
-  
-  
-  exports.deleteStockOpnameHasilAscend = async (noso, itemId) => {
-    try {
-      await connectDb();
-  
-      const request = new sql.Request();
-      request.input('NoSO', sql.VarChar(50), noso);
-      request.input('ItemID', sql.Int, itemId);
-  
-      const result = await request.query(`
+
+    return { success: true, qtyUsage: result.recordset[0]?.Hasil || 0.0 };
+  } catch (err) {
+    console.error("Error in fetchQtyUsage:", err);
+    throw err;
+  }
+};
+
+exports.deleteStockOpnameHasilAscend = async (noso, itemId) => {
+  try {
+    await connectDb();
+
+    const request = new sql.Request();
+    request.input("NoSO", sql.VarChar(50), noso);
+    request.input("ItemID", sql.Int, itemId);
+
+    const result = await request.query(`
         DELETE FROM [dbo].[StockOpnameAscendHasil]
         WHERE NoSO = @NoSO AND ItemID = @ItemID
       `);
-  
-      return {
-        success: true,
-        deletedCount: result.rowsAffected?.[0] ?? 0
-      };
-    } catch (err) {
-      console.error('Error in deleteStockOpnameHasilAscend:', err);
-      throw err;
-    }
-  };
-  
 
-  exports.saveStockOpnameAscendHasil = async (noSO, dataList) => {
-    let pool;
-    let transaction;
-    try {
-      pool = await connectDb();
-      transaction = new sql.Transaction(pool);
-      await transaction.begin();
-  
-      for (const data of dataList) {
-        if (data.qtyFound === null || data.qtyFound === undefined) {
-          continue; // skip kalau kosong
-        }
-  
-        const request = new sql.Request(transaction);
-        await request
-          .input('NoSO', sql.VarChar, noSO)
-          .input('ItemID', sql.Int, data.itemId)
-          .input('QtyFisik', sql.Decimal(18, 6), data.qtyFound)
-          .input('QtyUsage', sql.Decimal(18, 6), data.qtyUsage)
-          .input('UsageRemark', sql.VarChar, data.usageRemark || '')
-          .input('IsUpdateUsage', sql.Bit, 1)
-          .query(`
+    return {
+      success: true,
+      deletedCount: result.rowsAffected?.[0] ?? 0,
+    };
+  } catch (err) {
+    console.error("Error in deleteStockOpnameHasilAscend:", err);
+    throw err;
+  }
+};
+
+exports.saveStockOpnameAscendHasil = async (noSO, dataList) => {
+  let pool;
+  let transaction;
+  try {
+    pool = await connectDb();
+    transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    for (const data of dataList) {
+      if (data.qtyFound === null || data.qtyFound === undefined) {
+        continue; // skip kalau kosong
+      }
+
+      const request = new sql.Request(transaction);
+      await request
+        .input("NoSO", sql.VarChar, noSO)
+        .input("ItemID", sql.Int, data.itemId)
+        .input("QtyFisik", sql.Decimal(18, 6), data.qtyFound)
+        .input("QtyUsage", sql.Decimal(18, 6), data.qtyUsage)
+        .input("UsageRemark", sql.VarChar, data.usageRemark || "")
+        .input("IsUpdateUsage", sql.Bit, 1).query(`
             MERGE [dbo].[StockOpnameAscendHasil] AS target
             USING (SELECT 
                       @NoSO AS NoSO, 
@@ -839,21 +851,24 @@ exports.getStockOpnameHasil = async (noSO) => {
               INSERT (NoSO, ItemID, QtyFisik, QtyUsage, UsageRemark, IsUpdateUsage)
               VALUES (source.NoSO, source.ItemID, source.QtyFisik, source.QtyUsage, source.UsageRemark, source.IsUpdateUsage);
           `);
-      }
-  
-      await transaction.commit();
-      return { success: true, message: 'Data StockOpnameAscendHasil berhasil disimpan/diupdate' };
-    } catch (err) {
-      if (transaction) await transaction.rollback();
-      console.error('Error in saveStockOpnameAscendHasil:', err);
-      throw err;
-    } finally {
-      if (pool) await pool.close();
     }
-  };
 
-  exports.getStockOpnameWarehouses = async (noSO) => {
-  const { sql, connectDb } = require('../../core/config/db');
+    await transaction.commit();
+    return {
+      success: true,
+      message: "Data StockOpnameAscendHasil berhasil disimpan/diupdate",
+    };
+  } catch (err) {
+    if (transaction) await transaction.rollback();
+    console.error("Error in saveStockOpnameAscendHasil:", err);
+    throw err;
+  } finally {
+    if (pool) await pool.close();
+  }
+};
+
+exports.getStockOpnameWarehouses = async (noSO) => {
+  const { sql, connectDb } = require("../../core/config/db");
   await connectDb();
   const result = await sql.query`
     SELECT IdWarehouse
@@ -861,7 +876,6 @@ exports.getStockOpnameHasil = async (noSO) => {
     WHERE NoSO = ${noSO}
     ORDER BY IdWarehouse
   `;
-  const ids = result.recordset.map(r => r.IdWarehouse);
+  const ids = result.recordset.map((r) => r.IdWarehouse);
   return { success: true, noSO, warehouseIds: ids };
 };
-  
