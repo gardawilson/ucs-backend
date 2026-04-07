@@ -7,7 +7,7 @@ exports.getStockOpnameList = async () => {
     const result = await sql.query`
       SELECT NoSO, Tgl, IsAscend 
       FROM dbo.StockOpname_h 
-      ORDER BY NoSO Tgl DESC, NoSO Desc 
+      ORDER BY NoSO DESC
     `;
 
     // Mapping hasil query supaya Tgl diformat
